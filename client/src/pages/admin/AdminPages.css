@@ -1,0 +1,334 @@
+.admin-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.page-header h1 {
+  margin: 0 0 0.35rem 0;
+  color: #333;
+}
+
+.page-header p {
+  margin: 0;
+  color: #777;
+}
+
+.admin-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.admin-search,
+.admin-select {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.9rem;
+  min-width: 180px;
+}
+
+.admin-search.compact {
+  min-width: 140px;
+}
+
+.admin-select.compact {
+  min-width: 140px;
+}
+
+.admin-btn {
+  background: #ff6b35;
+  border: none;
+  color: white;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-btn:hover {
+  background: #ff7b4f;
+}
+
+.admin-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.admin-card-pad {
+  padding: 1.25rem;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.admin-grid.two-col {
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.stat-label {
+  color: #888;
+  margin: 0 0 0.35rem 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem 0;
+  color: #333;
+}
+
+.stat-sub {
+  margin: 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.admin-section-title {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.admin-list-item:last-child {
+  border-bottom: none;
+}
+
+.admin-item-title {
+  font-weight: 600;
+  color: #333;
+}
+
+.admin-item-sub {
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.admin-item-meta {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  background: rgba(255, 107, 53, 0.1);
+  color: #ff6b35;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: capitalize;
+}
+
+.pill-success {
+  background: rgba(76, 175, 80, 0.12);
+  color: #4caf50;
+}
+
+.pill-muted {
+  background: rgba(120, 120, 120, 0.12);
+  color: #777;
+}
+
+.admin-empty {
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table thead {
+  background: #f8f9fa;
+}
+
+.admin-table th,
+.admin-table td {
+  text-align: left;
+  padding: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+  color: #555;
+  font-size: 0.95rem;
+}
+
+.admin-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.seller-name {
+  font-weight: 600;
+  color: #333;
+}
+
+.seller-sub {
+  font-size: 0.85rem;
+  color: #888;
+  margin-top: 0.25rem;
+}
+
+.status-filters {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.filter-chip {
+  border: 1px solid #e0e0e0;
+  background: white;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #666;
+  transition: all 0.2s ease;
+}
+
+.filter-chip.active,
+.filter-chip:hover {
+  border-color: #ff6b35;
+  color: #ff6b35;
+  background: rgba(255, 107, 53, 0.08);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.status-pending {
+  background: rgba(255, 152, 0, 0.1);
+  color: #ff9800;
+}
+
+.status-approved {
+  background: rgba(76, 175, 80, 0.1);
+  color: #4caf50;
+}
+
+.status-rejected {
+  background: rgba(244, 67, 54, 0.1);
+  color: #f44336;
+}
+
+.action-group {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.btn-approve,
+.btn-reject {
+  border: none;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.btn-approve {
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+}
+
+.btn-reject {
+  background: rgba(244, 67, 54, 0.15);
+  color: #f44336;
+}
+
+.btn-approve:disabled,
+.btn-reject:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-muted {
+  border: 1px solid #e0e0e0;
+  background: white;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #666;
+  font-size: 0.85rem;
+}
+
+.btn-muted:hover {
+  border-color: #ff6b35;
+  color: #ff6b35;
+}
+
+.admin-inline-message {
+  background: white;
+  padding: 1rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  margin-bottom: 1rem;
+  color: #666;
+}
+
+.admin-inline-message-error {
+  border-left: 4px solid #f44336;
+}
+
+.empty-cell {
+  text-align: center;
+  padding: 2rem;
+  color: #888;
+}
+
+@media (max-width: 900px) {
+  .admin-table th,
+  .admin-table td {
+    padding: 0.75rem;
+  }
+}
