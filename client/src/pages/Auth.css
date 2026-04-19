@@ -52,6 +52,36 @@
   gap: 20px;
 }
 
+.auth-hint {
+  background: #fff4ee;
+  border: 1px solid rgba(255, 107, 53, 0.2);
+  padding: 12px 14px;
+  border-radius: 8px;
+  color: #7c2d12;
+  font-size: 0.9rem;
+}
+
+.auth-inline-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.auth-text-button {
+  background: none;
+  border: none;
+  color: #ff6b35;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.auth-text-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .form-group {
   display: flex;
   flex-direction: column;

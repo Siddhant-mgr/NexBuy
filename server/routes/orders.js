@@ -9,6 +9,7 @@ const requireApprovedSeller = require('../middleware/approvedSeller');
 const Product = require('../models/Product');
 const Store = require('../models/Store');
 const Order = require('../models/Order');
+const { createNotification } = require('../utils/notifications');
 
 const router = express.Router();
 
@@ -58,6 +59,7 @@ router.get(
       const orders = await Order.find(filter)
         .sort({ createdAt: -1 })
         .limit(limit)
+        .populate('storeId', 'storeName')
         .lean();
 
       res.json({ orders });
@@ -168,6 +170,19 @@ router.put(
       order.updatedAt = Date.now();
       await order.save();
 
+      try {
+        await createNotification(req, {
+          userId: order.customerId,
+          type: 'order_status',
+          title: 'Order status updated',
+          message: `Your order is now ${nextStatus}.`,
+          link: '/customer/reservations',
+          data: { orderId: order._id, storeId: store._id, status: nextStatus }
+        });
+      } catch (notifyError) {
+        console.error('Order status notification error:', notifyError);
+      }
+
       res.json({ message: 'Order updated', order });
     } catch (error) {
       console.error('Update order status error:', error);
@@ -237,6 +252,22 @@ router.put(
       order.status = 'cancelled';
       order.updatedAt = Date.now();
       await order.save();
+
+      try {
+        const store = await Store.findById(order.storeId).select('sellerId storeName').lean();
+        if (store?.sellerId) {
+          await createNotification(req, {
+            userId: store.sellerId,
+            type: 'order_cancelled',
+            title: 'Order cancelled',
+            message: `A customer cancelled an order from ${store.storeName || 'your store'}.`,
+            link: '/seller/orders',
+            data: { orderId: order._id, storeId: store._id }
+          });
+        }
+      } catch (notifyError) {
+        console.error('Order cancel notification error:', notifyError);
+      }
 
       const items = Array.isArray(order.items) ? order.items : [];
       await Promise.all(
@@ -375,6 +406,36 @@ router.post(
           stockStatus: computeStockStatus({ quantity: updatedProduct.quantity, reservedQuantity: updatedProduct.reservedQuantity })
         }
       });
+
+      try {
+        if (store?.sellerId) {
+          await createNotification(req, {
+            userId: store.sellerId,
+            type: 'new_order',
+            title: 'New order placed',
+            message: `${updatedProduct.name} x${purchaseQty} has been ordered.`,
+            link: '/seller/orders',
+            data: { orderId: order._id, storeId: store._id }
+          });
+        }
+
+        const availableQuantity = Math.max(
+          0,
+          (updatedProduct.quantity || 0) - (updatedProduct.reservedQuantity || 0)
+        );
+        if (store?.sellerId && availableQuantity > 0 && availableQuantity < 10) {
+          await createNotification(req, {
+            userId: store.sellerId,
+            type: 'low_inventory',
+            title: 'Low inventory alert',
+            message: `${updatedProduct.name} is low on stock (${availableQuantity} left).`,
+            link: '/seller/inventory',
+            data: { productId: updatedProduct._id, storeId: store._id }
+          });
+        }
+      } catch (notifyError) {
+        console.error('Order notifications error:', notifyError);
+      }
 
       emitStockUpdate(req, updatedProduct.storeId, {
         type: 'upsert',

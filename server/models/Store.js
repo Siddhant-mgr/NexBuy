@@ -72,6 +72,35 @@ const storeSchema = new mongoose.Schema({
       max: 5
     }
   },
+  storeVerificationStatus: {
+    type: String,
+    enum: ['not_submitted', 'pending', 'approved', 'rejected'],
+    default: 'not_submitted'
+  },
+  storeVerification: {
+    panNumber: {
+      type: String,
+      trim: true
+    },
+    businessCertificateUrl: {
+      type: String,
+      trim: true
+    },
+    submittedAt: {
+      type: Date
+    },
+    reviewedAt: {
+      type: Date
+    },
+    reviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    rejectionReason: {
+      type: String,
+      trim: true
+    }
+  },
   isActive: {
     type: Boolean,
     default: true

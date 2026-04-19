@@ -47,8 +47,28 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['placed', 'ready', 'completed', 'cancelled'],
+    enum: ['pending_payment', 'placed', 'ready', 'completed', 'cancelled'],
     default: 'placed'
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'paid', 'failed'],
+    default: 'pending'
+  },
+  paymentMethod: {
+    type: String,
+    trim: true
+  },
+  paymentRef: {
+    type: String,
+    trim: true
+  },
+  paymentAmount: {
+    type: Number,
+    min: 0
+  },
+  paymentMeta: {
+    type: mongoose.Schema.Types.Mixed
   },
   totalAmount: {
     type: Number,

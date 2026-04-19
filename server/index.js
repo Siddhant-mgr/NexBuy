@@ -66,10 +66,15 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/stores', require('./routes/stores'));
 app.use('/api/uploads', require('./routes/uploads'));
+app.use('/api/kyc', require('./routes/kyc'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api', require('./routes/products'));
 app.use('/api/orders', require('./routes/orders'));
+app.use('/api/payments', require('./routes/payments'));
 app.use('/api/messages', require('./routes/messages'));
+app.use('/api/ratings', require('./routes/ratings'));
+app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/favorites', require('./routes/favorites'));
 
 // Health check
 app.get('/api/health', (req, res) => {

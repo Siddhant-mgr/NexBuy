@@ -9,6 +9,7 @@ const User = require('../models/User');
 const Store = require('../models/Store');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
+const { createNotification } = require('../utils/notifications');
 
 const router = express.Router();
 
@@ -324,8 +325,149 @@ router.put(
           approvedBy: seller.sellerApprovedBy
         }
       });
+
+      try {
+        await createNotification(req, {
+          userId: seller._id,
+          type: 'seller_verification',
+          title: 'Seller verification updated',
+          message: `Your seller verification status is now ${seller.sellerVerificationStatus}.`,
+          link: '/seller/profile',
+          data: { status: seller.sellerVerificationStatus }
+        });
+      } catch (notifyError) {
+        console.error('Seller verification notification error:', notifyError);
+      }
     } catch (error) {
       console.error('Update seller status error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  }
+);
+
+// @route   GET /api/admin/kyc
+// @desc    List KYC submissions
+// @access  Private (admin)
+router.get(
+  '/kyc',
+  auth,
+  requireRole('admin'),
+  [query('status').optional().isIn(['not_submitted', 'pending', 'approved', 'rejected', 'all']).withMessage('Invalid status')],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const status = req.query.status || 'pending';
+      const filter = {};
+      if (status !== 'all') {
+        if (status === 'not_submitted') {
+          filter.$or = [{ kycStatus: 'not_submitted' }, { kycStatus: { $exists: false } }];
+        } else {
+          filter.kycStatus = status;
+        }
+      }
+
+      const users = await User.find(filter)
+        .select('name email role phone address kycStatus kyc createdAt updatedAt')
+        .sort({ updatedAt: -1 })
+        .limit(500)
+        .lean();
+
+      res.json({
+        submissions: users.map((u) => ({
+          userId: u._id,
+          name: u.name,
+          email: u.email,
+          role: u.role,
+          phone: u.phone,
+          address: u.address,
+          kycStatus: u.kycStatus || 'not_submitted',
+          kyc: u.kyc || null,
+          createdAt: u.createdAt,
+          updatedAt: u.updatedAt
+        }))
+      });
+    } catch (error) {
+      console.error('List KYC error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  }
+);
+
+// @route   PUT /api/admin/kyc/:userId/decision
+// @desc    Approve or reject KYC
+// @access  Private (admin)
+router.put(
+  '/kyc/:userId/decision',
+  auth,
+  requireRole('admin'),
+  [
+    param('userId').custom((value) => mongoose.isValidObjectId(value)).withMessage('Invalid userId'),
+    body('status').isIn(['approved', 'rejected']).withMessage('Invalid status'),
+    body('rejectionReason').custom((value, { req }) => {
+      if (req.body.status === 'rejected' && (!value || !String(value).trim())) {
+        throw new Error('Rejection reason is required');
+      }
+      return true;
+    })
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const user = await User.findById(req.params.userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      const nextStatus = req.body.status;
+      const rejectionReason = req.body.rejectionReason ? String(req.body.rejectionReason).trim() : null;
+
+      user.kycStatus = nextStatus;
+      if (!user.kyc) {
+        user.kyc = {};
+      }
+      user.kyc.reviewedAt = new Date();
+      user.kyc.reviewedBy = req.user.userId;
+      user.kyc.rejectionReason = nextStatus === 'rejected' ? rejectionReason : null;
+      user.updatedAt = new Date();
+
+      await user.save();
+
+      res.json({
+        message: 'KYC status updated',
+        submission: {
+          userId: user._id,
+          kycStatus: user.kycStatus,
+          reviewedAt: user.kyc.reviewedAt,
+          reviewedBy: user.kyc.reviewedBy,
+          rejectionReason: user.kyc.rejectionReason
+        }
+      });
+
+      try {
+        await createNotification(req, {
+          userId: user._id,
+          type: 'kyc_status',
+          title: 'KYC status updated',
+          message:
+            user.kycStatus === 'approved'
+              ? 'Your KYC has been approved.'
+              : `Your KYC was rejected. ${user.kyc.rejectionReason || ''}`.trim(),
+          link: '/customer/profile',
+          data: { status: user.kycStatus }
+        });
+      } catch (notifyError) {
+        console.error('KYC notification error:', notifyError);
+      }
+    } catch (error) {
+      console.error('Update KYC status error:', error);
       res.status(500).json({ message: 'Server error' });
     }
   }
@@ -340,6 +482,7 @@ router.get(
   requireRole('admin'),
   [
     query('status').optional().isIn(['active', 'inactive', 'all']).withMessage('Invalid status'),
+    query('verificationStatus').optional().isIn(['not_submitted', 'pending', 'approved', 'rejected', 'all']).withMessage('Invalid verificationStatus'),
     query('search').optional().isString(),
     query('limit').optional().isInt({ min: 1, max: 500 }).withMessage('limit must be between 1 and 500')
   ],
@@ -351,12 +494,16 @@ router.get(
       }
 
       const status = req.query.status || 'all';
+      const verificationStatus = req.query.verificationStatus || 'all';
       const limit = req.query.limit !== undefined ? Number(req.query.limit) : 200;
       const search = req.query.search ? String(req.query.search).trim() : '';
 
       const filter = {};
       if (status !== 'all') {
         filter.isActive = status === 'active';
+      }
+      if (verificationStatus !== 'all') {
+        filter.storeVerificationStatus = verificationStatus;
       }
       if (search) {
         filter.storeName = { $regex: search, $options: 'i' };
@@ -371,6 +518,80 @@ router.get(
       res.json({ stores });
     } catch (error) {
       console.error('List stores error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  }
+);
+
+// @route   PUT /api/admin/stores/:id/verification
+// @desc    Approve or reject store verification
+// @access  Private (admin)
+router.put(
+  '/stores/:id/verification',
+  auth,
+  requireRole('admin'),
+  [
+    param('id').custom((value) => mongoose.isValidObjectId(value)).withMessage('Invalid store id'),
+    body('status').isIn(['approved', 'rejected']).withMessage('Invalid status'),
+    body('rejectionReason').custom((value, { req }) => {
+      if (req.body.status === 'rejected' && (!value || !String(value).trim())) {
+        throw new Error('Rejection reason is required');
+      }
+      return true;
+    })
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const store = await Store.findById(req.params.id);
+      if (!store) {
+        return res.status(404).json({ message: 'Store not found' });
+      }
+
+      const nextStatus = req.body.status;
+      const rejectionReason = req.body.rejectionReason ? String(req.body.rejectionReason).trim() : null;
+
+      store.storeVerificationStatus = nextStatus;
+      if (!store.storeVerification) {
+        store.storeVerification = {};
+      }
+      store.storeVerification.reviewedAt = new Date();
+      store.storeVerification.reviewedBy = req.user.userId;
+      store.storeVerification.rejectionReason = nextStatus === 'rejected' ? rejectionReason : null;
+      store.updatedAt = new Date();
+
+      await store.save();
+
+      res.json({
+        message: 'Store verification updated',
+        store: {
+          id: store._id,
+          storeVerificationStatus: store.storeVerificationStatus,
+          storeVerification: store.storeVerification
+        }
+      });
+
+      try {
+        await createNotification(req, {
+          userId: store.sellerId,
+          type: 'store_verification',
+          title: 'Store verification updated',
+          message:
+            store.storeVerificationStatus === 'approved'
+              ? 'Your store verification was approved.'
+              : `Your store verification was rejected. ${store.storeVerification?.rejectionReason || ''}`.trim(),
+          link: '/seller/store',
+          data: { status: store.storeVerificationStatus, storeId: store._id }
+        });
+      } catch (notifyError) {
+        console.error('Store verification notification error:', notifyError);
+      }
+    } catch (error) {
+      console.error('Update store verification error:', error);
       res.status(500).json({ message: 'Server error' });
     }
   }
@@ -424,6 +645,7 @@ router.get(
   requireRole('admin'),
   [
     query('status').optional().isIn(['available', 'unavailable', 'all']).withMessage('Invalid status'),
+    query('approval').optional().isIn(['pending', 'approved', 'rejected', 'all']).withMessage('Invalid approval status'),
     query('search').optional().isString(),
     query('category').optional().isString(),
     query('limit').optional().isInt({ min: 1, max: 500 }).withMessage('limit must be between 1 and 500')
@@ -436,6 +658,7 @@ router.get(
       }
 
       const status = req.query.status || 'all';
+      const approval = req.query.approval || 'all';
       const limit = req.query.limit !== undefined ? Number(req.query.limit) : 200;
       const search = req.query.search ? String(req.query.search).trim() : '';
       const category = req.query.category ? String(req.query.category).trim() : '';
@@ -443,6 +666,13 @@ router.get(
       const filter = {};
       if (status !== 'all') {
         filter.isAvailable = status === 'available';
+      }
+      if (approval !== 'all') {
+        if (approval === 'approved') {
+          filter.$or = [{ approvalStatus: 'approved' }, { approvalStatus: { $exists: false } }];
+        } else {
+          filter.approvalStatus = approval;
+        }
       }
       if (search) {
         filter.name = { $regex: search, $options: 'i' };
@@ -499,6 +729,83 @@ router.put(
       });
     } catch (error) {
       console.error('Update product status error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  }
+);
+
+// @route   PUT /api/admin/products/:id/approval
+// @desc    Approve or reject a product
+// @access  Private (admin)
+router.put(
+  '/products/:id/approval',
+  auth,
+  requireRole('admin'),
+  [
+    param('id').custom((value) => mongoose.isValidObjectId(value)).withMessage('Invalid product id'),
+    body('status').isIn(['approved', 'rejected']).withMessage('Invalid approval status'),
+    body('reason').optional().isString().trim()
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const status = req.body.status;
+      const reason = req.body.reason ? String(req.body.reason).trim() : '';
+
+      if (status === 'rejected' && !reason) {
+        return res.status(400).json({ message: 'Rejection reason is required' });
+      }
+
+      const updates = {
+        approvalStatus: status,
+        approvalReason: status === 'rejected' ? reason : null,
+        approvedAt: status === 'approved' ? new Date() : null,
+        approvedBy: status === 'approved' ? req.user.userId : null,
+        updatedAt: new Date()
+      };
+
+      const product = await Product.findByIdAndUpdate(
+        req.params.id,
+        { $set: updates },
+        { new: true }
+      );
+
+      if (!product) {
+        return res.status(404).json({ message: 'Product not found' });
+      }
+
+      try {
+        const store = await Store.findById(product.storeId).select('sellerId storeName');
+        if (store?.sellerId) {
+          await createNotification(req, {
+            userId: store.sellerId,
+            type: 'product_approval',
+            title: status === 'approved' ? 'Product approved' : 'Product rejected',
+            message: status === 'approved'
+              ? `${product.name} has been approved and is now visible to customers.`
+              : `${product.name} was rejected. ${reason}`,
+            link: '/seller/inventory',
+            data: { productId: product._id, storeId: product.storeId }
+          });
+        }
+      } catch (notifyError) {
+        console.error('Product approval notification error:', notifyError);
+      }
+
+      res.json({
+        message: 'Product approval updated',
+        product: {
+          id: product._id,
+          approvalStatus: product.approvalStatus,
+          approvalReason: product.approvalReason
+        }
+      });
+    } catch (error) {
+      console.error('Update product approval error:', error);
       res.status(500).json({ message: 'Server error' });
     }
   }

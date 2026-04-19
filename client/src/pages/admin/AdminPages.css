@@ -38,6 +38,15 @@
   min-width: 180px;
 }
 
+.admin-input {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  width: 100%;
+  margin-top: 0.6rem;
+}
+
 .admin-search.compact {
   min-width: 140px;
 }
@@ -178,6 +187,117 @@
   font-size: 0.9rem;
 }
 
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+}
+
+.confirm-modal {
+  background: #fff;
+  border-radius: 14px;
+  padding: 1.5rem;
+  width: min(420px, 90vw);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
+}
+
+.confirm-modal h3 {
+  margin: 0 0 0.5rem 0;
+  color: #111827;
+}
+
+.confirm-modal p {
+  margin: 0 0 1.25rem 0;
+  color: #6b7280;
+}
+
+.confirm-modal textarea.admin-input {
+  margin-bottom: 1rem;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.notifications-page {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.notifications-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.notifications-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.notification-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 10px;
+  border: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+
+.notification-row.notification-unread {
+  background: #fff5ef;
+  border-color: rgba(255, 107, 53, 0.25);
+}
+
+.admin-profile-card {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.admin-profile-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.admin-profile-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.admin-profile-label {
+  color: #777;
+  font-weight: 600;
+}
+
+.admin-profile-value {
+  color: #333;
+  font-weight: 600;
+}
+
+.notification-title {
+  margin: 0 0 0.35rem 0;
+  font-weight: 600;
+  color: #333;
+}
+
+.notification-message {
+  margin: 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
 .admin-table {
   width: 100%;
   border-collapse: collapse;
@@ -257,6 +377,11 @@
 .status-rejected {
   background: rgba(244, 67, 54, 0.1);
   color: #f44336;
+}
+
+.status-not_submitted {
+  background: rgba(148, 163, 184, 0.2);
+  color: #64748b;
 }
 
 .action-group {

@@ -38,7 +38,8 @@ const run = async () => {
     name: name || 'Admin',
     email: normalizedEmail,
     password,
-    role: 'admin'
+    role: 'admin',
+    emailVerified: true
   });
 
   await user.save();

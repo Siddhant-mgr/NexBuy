@@ -19,6 +19,39 @@ const productSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  sku: {
+    type: String,
+    trim: true
+  },
+  brand: {
+    type: String,
+    trim: true
+  },
+  unit: {
+    type: String,
+    trim: true
+  },
+  origin: {
+    type: String,
+    trim: true
+  },
+  expiryDate: {
+    type: Date
+  },
+  ingredients: {
+    type: String,
+    trim: true
+  },
+  nutrition: {
+    type: String,
+    trim: true
+  },
+  details: [
+    {
+      label: { type: String, trim: true },
+      value: { type: String, trim: true }
+    }
+  ],
   price: {
     type: Number,
     required: true,
@@ -42,6 +75,22 @@ const productSchema = new mongoose.Schema({
   images: [{
     type: String
   }],
+  approvalStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  approvalReason: {
+    type: String,
+    trim: true
+  },
+  approvedAt: {
+    type: Date
+  },
+  approvedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
   isAvailable: {
     type: Boolean,
     default: true

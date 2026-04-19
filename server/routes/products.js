@@ -1,11 +1,12 @@
 const express = require('express');
-const { body, validationResult, param } = require('express-validator');
+const { body, validationResult, param, query } = require('express-validator');
 const mongoose = require('mongoose');
 const auth = require('../middleware/auth');
 const { requireRole } = require('../middleware/auth');
 const requireApprovedSeller = require('../middleware/approvedSeller');
 const Store = require('../models/Store');
 const Product = require('../models/Product');
+const { createNotification, createAdminNotifications } = require('../utils/notifications');
 
 const router = express.Router();
 
@@ -21,12 +22,22 @@ const toProductDto = (product) => {
     name: product.name,
     description: product.description,
     category: product.category,
+    sku: product.sku,
+    brand: product.brand,
+    unit: product.unit,
+    origin: product.origin,
+    expiryDate: product.expiryDate,
+    ingredients: product.ingredients,
+    nutrition: product.nutrition,
+    details: product.details || [],
     price: product.price,
     stockStatus,
     quantity,
     reservedQuantity,
     availableQuantity,
     images: product.images,
+    approvalStatus: product.approvalStatus,
+    approvalReason: product.approvalReason,
     isAvailable: product.isAvailable,
     createdAt: product.createdAt,
     updatedAt: product.updatedAt
@@ -56,12 +67,116 @@ router.get(
         return res.status(404).json({ message: 'Store not found' });
       }
 
-      const products = await Product.find({ storeId: req.params.storeId, isAvailable: true })
+      const products = await Product.find({
+        storeId: req.params.storeId,
+        isAvailable: true,
+        $or: [{ approvalStatus: 'approved' }, { approvalStatus: { $exists: false } }]
+      })
         .sort({ createdAt: -1 });
 
       res.json({ products: products.map(toProductDto) });
     } catch (error) {
       console.error('List store products error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  }
+);
+
+// Public: search products
+// @route   GET /api/products/search
+router.get(
+  '/products/search',
+  [
+    query('q').notEmpty().withMessage('Search query is required'),
+    query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be between 1 and 100')
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const q = String(req.query.q || '').trim();
+      const limit = req.query.limit !== undefined ? Number(req.query.limit) : 20;
+
+      const regex = new RegExp(q, 'i');
+      const products = await Product.find({
+        $and: [
+          { isAvailable: true },
+          { $or: [{ approvalStatus: 'approved' }, { approvalStatus: { $exists: false } }] },
+          {
+            $or: [
+              { name: regex },
+              { description: regex },
+              { category: regex },
+              { brand: regex },
+              { sku: regex }
+            ]
+          }
+        ]
+      })
+        .limit(limit)
+        .populate('storeId', 'storeName')
+        .lean();
+
+      const payload = (products || []).map((product) => ({
+        ...toProductDto(product),
+        storeName: product.storeId?.storeName
+      }));
+
+      res.json({ products: payload });
+    } catch (error) {
+      console.error('Search products error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  }
+);
+
+// Public: get product detail
+// @route   GET /api/products/:id
+router.get(
+  '/products/:id',
+  [param('id').custom((value) => mongoose.isValidObjectId(value)).withMessage('Invalid product id')],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const product = await Product.findById(req.params.id);
+      if (!product || product.isAvailable === false) {
+        return res.status(404).json({ message: 'Product not found' });
+      }
+
+      if (product.approvalStatus && product.approvalStatus !== 'approved') {
+        return res.status(404).json({ message: 'Product not found' });
+      }
+
+      const store = await Store.findById(product.storeId).lean();
+      if (!store || !store.isActive) {
+        return res.status(404).json({ message: 'Store not found' });
+      }
+
+      res.json({
+        product: toProductDto(product),
+        store: {
+          id: store._id,
+          storeName: store.storeName,
+          category: store.category,
+          description: store.description,
+          address: store.address,
+          contact: store.contact,
+          location: store.location,
+          openingHours: store.openingHours,
+          reputation: store.reputation,
+          storeVerificationStatus: store.storeVerificationStatus,
+          isActive: store.isActive
+        }
+      });
+    } catch (error) {
+      console.error('Get product error:', error);
       res.status(500).json({ message: 'Server error' });
     }
   }
@@ -114,6 +229,14 @@ router.post(
     body('reservedQuantity').optional().isInt({ min: 0 }).withMessage('reservedQuantity must be >= 0'),
     body('category').optional().isString(),
     body('description').optional().isString(),
+    body('sku').optional().isString(),
+    body('brand').optional().isString(),
+    body('unit').optional().isString(),
+    body('origin').optional().isString(),
+    body('expiryDate').optional().isISO8601().withMessage('expiryDate must be a valid date'),
+    body('ingredients').optional().isString(),
+    body('nutrition').optional().isString(),
+    body('details').optional().isArray(),
     body('images').optional().isArray(),
     body('isAvailable').optional().isBoolean()
   ],
@@ -137,16 +260,56 @@ router.post(
         name: req.body.name,
         description: req.body.description,
         category: req.body.category,
+        sku: req.body.sku,
+        brand: req.body.brand,
+        unit: req.body.unit,
+        origin: req.body.origin,
+        expiryDate: req.body.expiryDate ? new Date(req.body.expiryDate) : undefined,
+        ingredients: req.body.ingredients,
+        nutrition: req.body.nutrition,
+        details: Array.isArray(req.body.details) ? req.body.details : [],
         price: req.body.price,
         quantity: req.body.quantity ?? 0,
         reservedQuantity: req.body.reservedQuantity ?? 0,
         images: req.body.images ?? [],
+        approvalStatus: 'pending',
+        approvalReason: null,
+        approvedAt: null,
+        approvedBy: null,
         isAvailable: req.body.isAvailable ?? true
       });
 
       await product.save();
       const dto = toProductDto(product);
       emitStockUpdate(req, product.storeId, { type: 'upsert', product: dto });
+
+      try {
+        await createAdminNotifications(req, {
+          type: 'product_pending',
+          title: 'Product pending approval',
+          message: `${product.name} is awaiting approval.`,
+          link: '/admin/products',
+          data: { productId: product._id, storeId: product.storeId }
+        });
+      } catch (notifyError) {
+        console.error('Admin product notification error:', notifyError);
+      }
+
+      try {
+        const availableQuantity = Math.max(0, (product.quantity || 0) - (product.reservedQuantity || 0));
+        if (availableQuantity > 0 && availableQuantity < 10) {
+          await createNotification(req, {
+            userId: store.sellerId,
+            type: 'low_inventory',
+            title: 'Low inventory alert',
+            message: `${product.name} is low on stock (${availableQuantity} left).`,
+            link: '/seller/inventory',
+            data: { productId: product._id, storeId: store._id }
+          });
+        }
+      } catch (notifyError) {
+        console.error('Low inventory notification error:', notifyError);
+      }
 
       res.status(201).json({ message: 'Product created', product: dto });
     } catch (error) {
@@ -171,6 +334,14 @@ router.put(
     body('reservedQuantity').optional().isInt({ min: 0 }),
     body('category').optional().isString(),
     body('description').optional().isString(),
+    body('sku').optional().isString(),
+    body('brand').optional().isString(),
+    body('unit').optional().isString(),
+    body('origin').optional().isString(),
+    body('expiryDate').optional().isISO8601().withMessage('expiryDate must be a valid date'),
+    body('ingredients').optional().isString(),
+    body('nutrition').optional().isString(),
+    body('details').optional().isArray(),
     body('images').optional().isArray(),
     body('isAvailable').optional().isBoolean()
   ],
@@ -197,6 +368,14 @@ router.put(
       if (req.body.name !== undefined) product.name = req.body.name;
       if (req.body.description !== undefined) product.description = req.body.description;
       if (req.body.category !== undefined) product.category = req.body.category;
+      if (req.body.sku !== undefined) product.sku = req.body.sku;
+      if (req.body.brand !== undefined) product.brand = req.body.brand;
+      if (req.body.unit !== undefined) product.unit = req.body.unit;
+      if (req.body.origin !== undefined) product.origin = req.body.origin;
+      if (req.body.expiryDate !== undefined) product.expiryDate = req.body.expiryDate ? new Date(req.body.expiryDate) : undefined;
+      if (req.body.ingredients !== undefined) product.ingredients = req.body.ingredients;
+      if (req.body.nutrition !== undefined) product.nutrition = req.body.nutrition;
+      if (req.body.details !== undefined) product.details = Array.isArray(req.body.details) ? req.body.details : [];
       if (req.body.price !== undefined) product.price = req.body.price;
       if (req.body.quantity !== undefined) product.quantity = req.body.quantity;
       if (req.body.reservedQuantity !== undefined) product.reservedQuantity = req.body.reservedQuantity;
@@ -206,6 +385,22 @@ router.put(
       await product.save();
       const dto = toProductDto(product);
       emitStockUpdate(req, product.storeId, { type: 'upsert', product: dto });
+
+      try {
+        const availableQuantity = Math.max(0, (product.quantity || 0) - (product.reservedQuantity || 0));
+        if (availableQuantity > 0 && availableQuantity < 10) {
+          await createNotification(req, {
+            userId: store.sellerId,
+            type: 'low_inventory',
+            title: 'Low inventory alert',
+            message: `${product.name} is low on stock (${availableQuantity} left).`,
+            link: '/seller/inventory',
+            data: { productId: product._id, storeId: store._id }
+          });
+        }
+      } catch (notifyError) {
+        console.error('Low inventory notification error:', notifyError);
+      }
 
       res.json({ message: 'Product updated', product: dto });
     } catch (error) {

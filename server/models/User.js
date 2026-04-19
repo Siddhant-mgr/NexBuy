@@ -40,6 +40,16 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  emailVerified: {
+    type: Boolean,
+    default: false
+  },
+  emailVerificationCodeHash: {
+    type: String
+  },
+  emailVerificationExpires: {
+    type: Date
+  },
   sellerVerificationStatus: {
     type: String,
     enum: ['pending', 'approved', 'rejected'],
@@ -56,6 +66,66 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
+  kycStatus: {
+    type: String,
+    enum: ['not_submitted', 'pending', 'approved', 'rejected'],
+    default: 'not_submitted'
+  },
+  kyc: {
+    fullName: {
+      type: String,
+      trim: true
+    },
+    dob: {
+      type: Date
+    },
+    address: {
+      type: String,
+      trim: true
+    },
+    idType: {
+      type: String,
+      enum: ['passport', 'driver_license', 'national_id']
+    },
+    idNumber: {
+      type: String,
+      trim: true
+    },
+    documentFrontUrl: {
+      type: String,
+      trim: true
+    },
+    documentBackUrl: {
+      type: String,
+      trim: true
+    },
+    submittedAt: {
+      type: Date
+    },
+    reviewedAt: {
+      type: Date
+    },
+    reviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    rejectionReason: {
+      type: String,
+      trim: true
+    }
+  },
+  favoriteStores: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Store'
+    }
+  ],
+  favoriteProducts: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Product'
+    }
+  ],
   createdAt: {
     type: Date,
     default: Date.now

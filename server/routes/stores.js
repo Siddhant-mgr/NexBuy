@@ -5,6 +5,7 @@ const auth = require('../middleware/auth');
 const { requireRole } = require('../middleware/auth');
 const requireApprovedSeller = require('../middleware/approvedSeller');
 const Store = require('../models/Store');
+const { createAdminNotifications } = require('../utils/notifications');
 
 const router = express.Router();
 
@@ -74,6 +75,8 @@ router.get(
               contact: 1,
               openingHours: 1,
               reputation: 1,
+              storeVerificationStatus: 1,
+              storeVerification: 1,
               isActive: 1,
               createdAt: 1,
               updatedAt: 1,
@@ -112,6 +115,71 @@ router.get('/mine', auth, requireRole('seller'), async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+// @route   POST /api/stores/verification
+// @desc    Submit store verification (business certificate + PAN)
+// @access  Private (seller)
+router.post(
+  '/verification',
+  auth,
+  requireRole('seller'),
+  [
+    body('panNumber').trim().notEmpty().withMessage('PAN number is required'),
+    body('businessCertificateUrl').isString().notEmpty().withMessage('Business certificate is required')
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const store = await Store.findOne({ sellerId: req.user.userId });
+      if (!store) {
+        return res.status(404).json({ message: 'Store not found' });
+      }
+
+      if (store.storeVerificationStatus === 'approved') {
+        return res.status(400).json({ message: 'Store is already verified' });
+      }
+
+      const { panNumber, businessCertificateUrl } = req.body;
+
+      store.storeVerificationStatus = 'pending';
+      store.storeVerification = {
+        panNumber,
+        businessCertificateUrl,
+        submittedAt: new Date(),
+        reviewedAt: null,
+        reviewedBy: null,
+        rejectionReason: null
+      };
+      store.updatedAt = Date.now();
+
+      await store.save();
+
+      try {
+        await createAdminNotifications(req, {
+          type: 'store_verification_submitted',
+          title: 'Store verification submitted',
+          message: `${store.storeName} submitted verification details.`,
+          link: '/admin/stores',
+          data: { storeId: store._id, status: store.storeVerificationStatus }
+        });
+      } catch (notifyError) {
+        console.error('Admin store verification notification error:', notifyError);
+      }
+
+      return res.json({
+        message: 'Store verification submitted',
+        store
+      });
+    } catch (error) {
+      console.error('Store verification submit error:', error);
+      return res.status(500).json({ message: 'Server error' });
+    }
+  }
+);
 
 // @route   GET /api/stores/:id
 // @desc    Get a store by id
