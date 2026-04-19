@@ -185,30 +185,6 @@ const StoreView = () => {
     };
   }, [API_BASE_URL, id]);
 
-  const distanceKm = useMemo(() => {
-    if (!store?.location?.coordinates) return null;
-    const raw = localStorage.getItem('lastLocation');
-    if (!raw) return null;
-    try {
-      const { lng, lat } = JSON.parse(raw);
-      if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null;
-      const [storeLng, storeLat] = store.location.coordinates;
-
-      const toRad = (deg) => (deg * Math.PI) / 180;
-      const R = 6371;
-      const dLat = toRad(storeLat - lat);
-      const dLng = toRad(storeLng - lng);
-      const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(toRad(lat)) * Math.cos(toRad(storeLat)) *
-          Math.sin(dLng / 2) * Math.sin(dLng / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
-    } catch {
-      return null;
-    }
-  }, [store]);
-
   const openStoreNavigation = () => {
     const coords = store?.location?.coordinates;
     const destinationCoords = Array.isArray(coords) && coords.length >= 2

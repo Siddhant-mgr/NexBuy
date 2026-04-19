@@ -12,7 +12,6 @@ import {
   FaSignOutAlt,
   FaBars,
   FaTimes,
-  FaMapMarkerAlt,
   FaClipboardList,
   FaBell,
   FaSearch,

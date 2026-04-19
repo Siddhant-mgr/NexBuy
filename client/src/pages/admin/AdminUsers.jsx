@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import './AdminPages.css';
 
@@ -19,7 +19,7 @@ const AdminUsers = () => {
     userLabel: ''
   });
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -35,11 +35,11 @@ const AdminUsers = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [roleFilter, search]);
 
   useEffect(() => {
     loadUsers();
-  }, [roleFilter]);
+  }, [loadUsers]);
 
   const onSearchSubmit = (e) => {
     e.preventDefault();

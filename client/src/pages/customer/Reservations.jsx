@@ -30,12 +30,8 @@ const Reservations = () => {
   };
 
   useEffect(() => {
-    let cancelled = false;
     const status = activeTab === 'active' ? 'active' : activeTab;
     loadOrders(status).catch(() => null);
-    return () => {
-      cancelled = true;
-    };
   }, [activeTab]);
 
   const cancelOrder = async (orderId) => {

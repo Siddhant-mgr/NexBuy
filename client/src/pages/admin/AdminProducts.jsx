@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import './AdminPages.css';
 
@@ -16,7 +16,7 @@ const AdminProducts = () => {
   const [updatingId, setUpdatingId] = useState(null);
   const [rejectState, setRejectState] = useState({ open: false, productId: null, productName: '', reason: '' });
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -34,11 +34,11 @@ const AdminProducts = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [approvalFilter, category, search, statusFilter]);
 
   useEffect(() => {
     loadProducts();
-  }, [statusFilter, approvalFilter]);
+  }, [loadProducts]);
 
   const onSearchSubmit = (e) => {
     e.preventDefault();

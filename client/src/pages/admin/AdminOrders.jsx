@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import './AdminPages.css';
 
@@ -11,7 +11,7 @@ const AdminOrders = () => {
   const [error, setError] = useState('');
   const [updatingId, setUpdatingId] = useState(null);
 
-  const loadOrders = async () => {
+  const loadOrders = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
@@ -26,11 +26,11 @@ const AdminOrders = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter]);
 
   useEffect(() => {
     loadOrders();
-  }, [statusFilter]);
+  }, [loadOrders]);
 
   const onStatusChange = async (orderId, nextStatus) => {
     setUpdatingId(orderId);

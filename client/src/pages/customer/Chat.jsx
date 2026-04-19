@@ -73,7 +73,7 @@ const Chat = () => {
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [selectedChat, user?.id]);
 
   const messages = useMemo(() => {
     if (!selectedChat?.roomId) return [];
